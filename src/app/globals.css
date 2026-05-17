@@ -1,26 +1,84 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-base: #C8D0DC;
+  --bg-surface: #132040;
+  --bg-surface2: #1B2D55;
+  --bg-surface3: #243968;
+  --primary: #2563EB;
+  --primary-light: #3B82F6;
+  --accent: #F59E0B;
+  --accent-light: #FCD34D;
+  --text: #F0F6FF;
+  --text-page: #0D1B35;
+  --text-page-muted: #3D5478;
+  --text-muted: #7FA4D0;
+  --border: #1B2D55;
+  --success: #10B981;
+  --danger: #EF4444;
+  --warning: #F59E0B;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html, body {
+  background-color: var(--bg-base);
+  color: var(--text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  min-height: 100vh;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-surface); }
+::-webkit-scrollbar-thumb { background: var(--bg-surface3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #4B5563; }
+
+input, select, textarea {
+  background-color: var(--bg-surface2) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--bg-surface3) !important;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
 }
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--primary-light) !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+input::placeholder, textarea::placeholder { color: var(--text-muted) !important; }
+select option { background-color: var(--bg-surface2); }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in { animation: fadeIn 0.3s ease-out; }
+
+table { border-collapse: collapse; width: 100%; }
+
+th {
+  background-color: var(--bg-surface2);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.75rem 1rem;
+  text-align: left;
+}
+
+td {
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid var(--bg-surface2);
+  color: var(--text);
+  font-size: 0.875rem;
+}
+
+tr:hover td { background-color: rgba(31, 41, 55, 0.5); }
