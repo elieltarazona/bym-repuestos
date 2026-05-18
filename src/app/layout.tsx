@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Toaster } from 'react-hot-toast'
+import ServiceWorker from '@/components/ServiceWorker'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es" className="h-full">
       <body className="h-full antialiased">
         {children}
+        <ServiceWorker />
         <Toaster
           position="top-right"
           toastOptions={{
