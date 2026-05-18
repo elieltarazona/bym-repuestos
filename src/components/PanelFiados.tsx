@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { formatCurrency } from '@/lib/utils'
+import { useProfile } from '@/lib/profile-context'
 import type { ClienteFiado, Fiado } from '@/lib/types'
 import { X, Search, Plus, Pencil, Trash2, Check, ChevronDown, ChevronUp, CreditCard } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -16,7 +17,17 @@ interface ClienteConFiados extends ClienteFiado {
   totalSaldo: number
 }
 
+const MEDIOS_ABONO = [
+  { id: 'efectivo', label: 'Efectivo', emoji: '💵' },
+  { id: 'nequi', label: 'Nequi', emoji: '🟣' },
+  { id: 'bancolombia', label: 'Bancolombia', emoji: '🟡' },
+  { id: 'daviplata', label: 'Daviplata', emoji: '🔴' },
+  { id: 'tarjeta_debito', label: 'T. Débito', emoji: '💳' },
+  { id: 'tarjeta_credito', label: 'T. Crédito', emoji: '💳' },
+]
+
 export default function PanelFiados({ onClose }: PanelFiadosProps) {
+  const { esDueno } = useProfile()
   const [clientes, setClientes] = useState<ClienteConFiados[]>([])
   const [loading, setLoading] = useState(true)
   const [busqueda, setBusqueda] = useState('')
@@ -28,6 +39,7 @@ export default function PanelFiados({ onClose }: PanelFiadosProps) {
   const [nombreForm, setNombreForm] = useState('')
   const [telefonoForm, setTelefonoForm] = useState('')
   const [montoAbono, setMontoAbono] = useState('')
+  const [medioAbono, setMedioAbono] = useState('')
 
   useEffect(() => { loadData() }, [])
 
@@ -106,6 +118,7 @@ export default function PanelFiados({ onClose }: PanelFiadosProps) {
   async function registrarAbono(c: ClienteConFiados) {
     const monto = parseFloat(montoAbono)
     if (!monto || monto <= 0) { toast.error('Ingresa un monto válido'); return }
+    if (!medioAbono) { toast.error('Selecciona el medio de pago'); return }
     if (monto > c.totalSaldo) { toast.error(`Monto mayor a la deuda (${formatCurrency(c.totalSaldo)})`); return }
 
     setGuardando('abono-' + c.id)
@@ -121,7 +134,12 @@ export default function PanelFiados({ onClose }: PanelFiadosProps) {
       const pago = Math.min(remaining, fiado.saldo)
       const nuevoSaldo = Math.round((fiado.saldo - pago) * 100) / 100
 
-      await supabase.from('abonos_fiado').insert({ fiado_id: fiado.id, monto: pago, usuario_id: user?.id })
+      await supabase.from('abonos_fiado').insert({
+        fiado_id: fiado.id,
+        monto: pago,
+        medio_pago: medioAbono,
+        usuario_id: user?.id,
+      })
       await supabase.from('fiados').update({
         saldo: nuevoSaldo,
         estado: nuevoSaldo === 0 ? 'pagado' : 'pendiente',
@@ -131,9 +149,10 @@ export default function PanelFiados({ onClose }: PanelFiadosProps) {
       remaining -= pago
     }
 
-    toast.success(`Abono de ${formatCurrency(monto)} registrado`)
+    toast.success(`Pago de ${formatCurrency(monto)} registrado`)
     setAbonoId(null)
     setMontoAbono('')
+    setMedioAbono('')
     loadData()
     setGuardando(null)
   }
@@ -156,29 +175,30 @@ export default function PanelFiados({ onClose }: PanelFiadosProps) {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => { setShowNuevo(true); setEditando(null); setAbonoId(null); setNombreForm(''); setTelefonoForm('') }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
-              style={{ background: 'rgba(245,158,11,0.15)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.3)' }}>
-              <Plus size={14} />
-              Nuevo cliente
-            </button>
+            {/* Solo dueño puede agregar clientes manualmente */}
+            {esDueno && (
+              <button
+                onClick={() => { setShowNuevo(true); setEditando(null); setAbonoId(null); setNombreForm(''); setTelefonoForm('') }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
+                style={{ background: 'rgba(245,158,11,0.15)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.3)' }}>
+                <Plus size={14} />
+                Nuevo cliente
+              </button>
+            )}
             <button onClick={onClose} style={{ color: 'var(--text-muted)' }}><X size={22} /></button>
           </div>
         </div>
 
-        {/* Form nuevo cliente */}
-        {showNuevo && (
+        {/* Form nuevo cliente (solo dueño) */}
+        {showNuevo && esDueno && (
           <div className="px-4 py-3 flex-shrink-0 flex flex-col gap-2"
             style={{ borderBottom: '1px solid var(--bg-surface2)', background: 'rgba(245,158,11,0.05)' }}>
             <p className="text-xs font-semibold" style={{ color: '#F59E0B' }}>➕ Nuevo cliente fiado</p>
             <div className="flex gap-2">
               <input type="text" placeholder="Nombre completo *" value={nombreForm}
-                onChange={e => setNombreForm(e.target.value)}
-                style={{ flex: 1, fontSize: '0.85rem' }} />
+                onChange={e => setNombreForm(e.target.value)} style={{ flex: 1, fontSize: '0.85rem' }} />
               <input type="tel" placeholder="Teléfono" value={telefonoForm}
-                onChange={e => setTelefonoForm(e.target.value)}
-                style={{ width: '130px', fontSize: '0.85rem' }} />
+                onChange={e => setTelefonoForm(e.target.value)} style={{ width: '130px', fontSize: '0.85rem' }} />
             </div>
             <div className="flex gap-2">
               <button onClick={crearCliente} disabled={guardando === 'nuevo'}
@@ -206,7 +226,7 @@ export default function PanelFiados({ onClose }: PanelFiadosProps) {
           </div>
         </div>
 
-        {/* Lista de clientes */}
+        {/* Lista */}
         <div className="flex-1 overflow-y-auto px-3 py-2">
           {loading ? (
             <div className="flex items-center justify-center h-40">
@@ -245,41 +265,51 @@ export default function PanelFiados({ onClose }: PanelFiadosProps) {
                         Debe: {formatCurrency(c.totalSaldo)}
                       </p>
                     </div>
-                    {/* 3 botones de acción */}
+
+                    {/* Botones de acción */}
                     <div className="flex items-center gap-1 flex-shrink-0">
+                      {/* Botón 1: Pagar/Abonar — ambos roles */}
                       <button
-                        onClick={() => { setAbonoId(isAbonando ? null : c.id); setMontoAbono(''); setEditando(null); setExpandido(null) }}
+                        onClick={() => { setAbonoId(isAbonando ? null : c.id); setMontoAbono(''); setMedioAbono(''); setEditando(null); setExpandido(null) }}
                         className="p-2 rounded-xl transition-all flex items-center gap-1 text-xs font-semibold"
                         style={{ background: isAbonando ? 'rgba(16,185,129,0.2)' : 'rgba(16,185,129,0.1)', color: '#10B981' }}
                         title="Pagar o abonar">
                         <CreditCard size={15} />
                         {isAbonando ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                       </button>
-                      <button
-                        onClick={() => { setEditando(isEditando ? null : c.id); setNombreForm(c.nombre); setTelefonoForm(c.telefono || ''); setAbonoId(null); setExpandido(null) }}
-                        className="p-2 rounded-xl transition-all"
-                        style={{ background: isEditando ? 'rgba(37,99,235,0.2)' : 'rgba(37,99,235,0.1)', color: 'var(--primary-light)' }}
-                        title="Editar cliente">
-                        <Pencil size={15} />
-                      </button>
-                      <button
-                        onClick={() => eliminarCliente(c)}
-                        disabled={guardando === 'del-' + c.id}
-                        className="p-2 rounded-xl transition-all"
-                        style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444' }}
-                        title="Eliminar cliente">
-                        <Trash2 size={15} />
-                      </button>
+
+                      {/* Botón 2 y 3: solo dueño */}
+                      {esDueno && (
+                        <>
+                          <button
+                            onClick={() => { setEditando(isEditando ? null : c.id); setNombreForm(c.nombre); setTelefonoForm(c.telefono || ''); setAbonoId(null); setExpandido(null) }}
+                            className="p-2 rounded-xl transition-all"
+                            style={{ background: isEditando ? 'rgba(37,99,235,0.2)' : 'rgba(37,99,235,0.1)', color: 'var(--primary-light)' }}
+                            title="Editar cliente">
+                            <Pencil size={15} />
+                          </button>
+                          <button
+                            onClick={() => eliminarCliente(c)}
+                            disabled={guardando === 'del-' + c.id}
+                            className="p-2 rounded-xl transition-all"
+                            style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444' }}
+                            title="Eliminar cliente">
+                            <Trash2 size={15} />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
 
-                  {/* Panel: Abonar/Pagar */}
+                  {/* Panel: Pagar / Abonar */}
                   {isAbonando && (
-                    <div className="px-4 pb-3 pt-2 flex flex-col gap-2"
+                    <div className="px-4 pb-3 pt-2 flex flex-col gap-3"
                       style={{ borderTop: '1px solid var(--bg-surface3)' }}>
                       <p className="text-xs font-semibold" style={{ color: '#10B981' }}>
-                        Pagar / Abonar — Total pendiente: {formatCurrency(c.totalSaldo)}
+                        Pagar / Abonar — Deuda total: {formatCurrency(c.totalSaldo)}
                       </p>
+
+                      {/* Monto */}
                       <div className="flex gap-2 items-center">
                         <input type="number" min={1} placeholder="Monto a abonar" value={montoAbono}
                           onChange={e => setMontoAbono(e.target.value)}
@@ -290,8 +320,28 @@ export default function PanelFiados({ onClose }: PanelFiadosProps) {
                           Pagar todo
                         </button>
                       </div>
+
+                      {/* Medio de pago */}
+                      <div>
+                        <p className="text-xs mb-1.5" style={{ color: 'var(--text-muted)' }}>Medio de pago *</p>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {MEDIOS_ABONO.map(mp => (
+                            <button key={mp.id} onClick={() => setMedioAbono(mp.id)}
+                              className="flex flex-col items-center gap-0.5 py-2 rounded-xl text-xs font-semibold transition-all"
+                              style={{
+                                background: medioAbono === mp.id ? 'rgba(16,185,129,0.2)' : 'var(--bg-surface3)',
+                                color: medioAbono === mp.id ? '#10B981' : 'var(--text-muted)',
+                                border: medioAbono === mp.id ? '1px solid rgba(16,185,129,0.4)' : '1px solid transparent',
+                              }}>
+                              <span className="text-base">{mp.emoji}</span>
+                              {mp.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
                       <button onClick={() => registrarAbono(c)} disabled={guardando === 'abono-' + c.id}
-                        className="w-full py-2 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1"
+                        className="w-full py-2.5 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1"
                         style={{ background: '#10B981' }}>
                         <Check size={13} />
                         {guardando === 'abono-' + c.id ? 'Registrando...' : 'Confirmar pago'}
@@ -299,8 +349,8 @@ export default function PanelFiados({ onClose }: PanelFiadosProps) {
                     </div>
                   )}
 
-                  {/* Panel: Editar cliente */}
-                  {isEditando && (
+                  {/* Panel: Editar cliente (solo dueño) */}
+                  {isEditando && esDueno && (
                     <div className="px-4 pb-3 pt-2 flex flex-col gap-2"
                       style={{ borderTop: '1px solid var(--bg-surface3)' }}>
                       <p className="text-xs font-semibold" style={{ color: 'var(--primary-light)' }}>Editar cliente</p>
@@ -351,9 +401,7 @@ export default function PanelFiados({ onClose }: PanelFiadosProps) {
                             ))}
                           </div>
                           <div className="text-right">
-                            <p className="text-xs font-black" style={{ color: '#EF4444' }}>
-                              {formatCurrency(f.saldo)}
-                            </p>
+                            <p className="text-xs font-black" style={{ color: '#EF4444' }}>{formatCurrency(f.saldo)}</p>
                             {f.total !== f.saldo && (
                               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>de {formatCurrency(f.total)}</p>
                             )}

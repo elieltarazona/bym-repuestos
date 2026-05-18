@@ -23,7 +23,7 @@ const CATEGORIA_EMOJI: Record<string, string> = {
   'Guardabarro': '🏍️', 'Sillines': '🪑', 'Tanque': '⛽', 'Casco': '⛑️',
   'Guantes': '🧤', 'Chaqueta': '🧥', 'Limpiador de Cadena': '🧴',
   'Limpiador Multiusos': '🧹', 'Repuestos Motor': '🔩', 'Carburador': '⚙️',
-  'Accesorios': '🔧', 'Lujos': '✨', 'Otros': '📦',
+  'Accesorios': '🔧', 'Lujos': '✨', 'Tornillos': '🔩', 'Arandelas': '⭕', 'Otros': '📦',
 }
 
 export default function InventarioPage() {

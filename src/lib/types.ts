@@ -80,6 +80,7 @@ export interface AbonoFiado {
   id: string
   fiado_id: string
   monto: number
+  medio_pago: string
   usuario_id: string
   created_at: string
 }

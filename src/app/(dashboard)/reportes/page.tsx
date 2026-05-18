@@ -21,6 +21,7 @@ export default function ReportesPage() {
   const { esDueno, loading: loadingProfile } = useProfile()
   const [productos, setProductos] = useState<Producto[]>([])
   const [movimientos, setMovimientos] = useState<Movimiento[]>([])
+  const [profileMap, setProfileMap] = useState<Record<string, { nombre: string; rol: string }>>({})
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -38,7 +39,7 @@ export default function ReportesPage() {
   }, [])
 
   async function loadData() {
-    const [prodsRes, movsRes] = await Promise.all([
+    const [prodsRes, movsRes, profilesRes] = await Promise.all([
       supabase
         .from('productos')
         .select('*, categoria:categorias(nombre)')
@@ -50,10 +51,14 @@ export default function ReportesPage() {
         .gte('created_at', `${fechaDesde}T00:00:00`)
         .lte('created_at', `${fechaHasta}T23:59:59`)
         .order('created_at', { ascending: false }),
+      supabase.from('profiles').select('id, nombre, rol'),
     ])
 
     setProductos((prodsRes.data || []) as Producto[])
     setMovimientos((movsRes.data || []) as Movimiento[])
+    const map: Record<string, { nombre: string; rol: string }> = {}
+    ;(profilesRes.data || []).forEach(p => { map[p.id] = { nombre: p.nombre, rol: p.rol } })
+    setProfileMap(map)
     setLoading(false)
   }
 
@@ -284,10 +289,14 @@ export default function ReportesPage() {
                   <th>Tipo</th>
                   <th>Cantidad</th>
                   <th>Motivo</th>
+                  <th>Registrado por</th>
                 </tr>
               </thead>
               <tbody>
-                {movimientos.slice(0, 30).map((m) => (
+                {movimientos.slice(0, 30).map((m) => {
+                  const prof = profileMap[m.usuario_id]
+                  const isDueno = prof?.rol === 'dueño'
+                  return (
                   <tr key={m.id}>
                     <td style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                       {formatDateShort(m.created_at)}
@@ -315,8 +324,25 @@ export default function ReportesPage() {
                       {m.tipo === 'entrada' ? '+' : '-'}{m.cantidad}
                     </td>
                     <td style={{ color: 'var(--text-muted)' }}>{m.motivo || '—'}</td>
+                    <td>
+                      {prof ? (
+                        <div className="flex flex-col gap-0.5">
+                          <p className="text-xs font-semibold" style={{ color: 'var(--text)' }}>
+                            {prof.nombre?.split(' ')[0]}
+                          </p>
+                          <span className="text-xs font-bold px-1.5 py-0.5 rounded-full w-fit"
+                            style={{
+                              background: isDueno ? 'rgba(245,158,11,0.15)' : 'rgba(37,99,235,0.15)',
+                              color: isDueno ? '#F59E0B' : '#3B82F6',
+                            }}>
+                            {isDueno ? '👑 Dueño' : '👤 Empleado'}
+                          </span>
+                        </div>
+                      ) : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                    </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>
