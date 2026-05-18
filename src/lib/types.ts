@@ -56,6 +56,34 @@ export interface Movimiento {
   usuario?: Profile
 }
 
+export interface ClienteFiado {
+  id: string
+  nombre: string
+  telefono?: string
+  created_at: string
+}
+
+export interface Fiado {
+  id: string
+  cliente_id: string
+  items: { producto_id: string; nombre: string; cantidad: number; precio_venta: number }[]
+  total: number
+  saldo: number
+  estado: 'pendiente' | 'pagado' | 'cancelado'
+  usuario_id: string
+  created_at: string
+  updated_at: string
+  cliente?: ClienteFiado
+}
+
+export interface AbonoFiado {
+  id: string
+  fiado_id: string
+  monto: number
+  usuario_id: string
+  created_at: string
+}
+
 export interface DashboardStats {
   total_productos: number
   total_stock: number

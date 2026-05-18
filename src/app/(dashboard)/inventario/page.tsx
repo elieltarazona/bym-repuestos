@@ -7,7 +7,8 @@ import { formatCurrency } from '@/lib/utils'
 import type { Producto } from '@/lib/types'
 import ModalVenta from '@/components/ModalVenta'
 import PanelGestion from '@/components/PanelGestion'
-import { Search, Package, Plus, Settings2 } from 'lucide-react'
+import PanelFiados from '@/components/PanelFiados'
+import { Search, Package, Plus, Settings2, CreditCard } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const CATEGORIA_EMOJI: Record<string, string> = {
@@ -33,6 +34,7 @@ export default function InventarioPage() {
   const [categoriaActiva, setCategoriaActiva] = useState('Todos')
   const [productoVenta, setProductoVenta] = useState<Producto | null>(null)
   const [panelGestion, setPanelGestion] = useState(false)
+  const [panelFiados, setPanelFiados] = useState(false)
 
   useEffect(() => { loadData() }, [])
 
@@ -88,6 +90,9 @@ export default function InventarioPage() {
       {panelGestion && (
         <PanelGestion onClose={() => setPanelGestion(false)} onActualizado={loadData} />
       )}
+      {panelFiados && (
+        <PanelFiados onClose={() => setPanelFiados(false)} />
+      )}
 
       {/* Header */}
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
@@ -98,6 +103,15 @@ export default function InventarioPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Botón fiados */}
+          <button
+            onClick={() => setPanelFiados(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
+            style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', color: '#F59E0B' }}
+          >
+            <CreditCard size={16} />
+            Fiados
+          </button>
           {/* Botón gestionar */}
           <button
             onClick={() => setPanelGestion(true)}
