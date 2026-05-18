@@ -57,7 +57,8 @@ export default function ReportesPage() {
     setProductos((prodsRes.data || []) as Producto[])
     setMovimientos((movsRes.data || []) as Movimiento[])
     const map: Record<string, { nombre: string; rol: string }> = {}
-    ;(profilesRes.data || []).forEach((p: { id: string; nombre: string; rol: string }) => { map[p.id] = { nombre: p.nombre, rol: p.rol } })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(profilesRes.data as any[] || []).forEach(p => { map[p.id] = { nombre: p.nombre, rol: p.rol } })
     setProfileMap(map)
     setLoading(false)
   }
