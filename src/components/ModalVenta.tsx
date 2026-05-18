@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { formatCurrency } from '@/lib/utils'
+import { useProfile } from '@/lib/profile-context'
 import type { Producto, ClienteFiado } from '@/lib/types'
 import { X, Minus, Plus, CheckCircle, CreditCard, Search, UserPlus } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -23,6 +24,7 @@ const MEDIOS_PAGO = [
 ]
 
 export default function ModalVenta({ producto, onClose, onVendido }: ModalVentaProps) {
+  const { esDueno } = useProfile()
   const [modo, setModo] = useState<'vender' | 'fiar'>('vender')
   const [cantidad, setCantidad] = useState(1)
   const [descuento, setDescuento] = useState(0)
@@ -165,7 +167,7 @@ export default function ModalVenta({ producto, onClose, onVendido }: ModalVentaP
           <button onClick={onClose} style={{ color: 'var(--text-muted)' }}><X size={20} /></button>
         </div>
 
-        {/* Toggle Vender / Fiar */}
+        {/* Toggle Vender / Fiar — solo dueño puede fiar */}
         <div className="flex px-5 pt-4 gap-2">
           <button onClick={() => setModo('vender')}
             className="flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
@@ -177,16 +179,18 @@ export default function ModalVenta({ producto, onClose, onVendido }: ModalVentaP
             <CheckCircle size={14} />
             Vender
           </button>
-          <button onClick={() => setModo('fiar')}
-            className="flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
-            style={{
-              background: modo === 'fiar' ? 'rgba(245,158,11,0.15)' : 'var(--bg-surface2)',
-              color: modo === 'fiar' ? '#F59E0B' : 'var(--text-muted)',
-              border: modo === 'fiar' ? '1px solid rgba(245,158,11,0.4)' : '1px solid transparent',
-            }}>
-            <CreditCard size={14} />
-            Fiar
-          </button>
+          {esDueno && (
+            <button onClick={() => setModo('fiar')}
+              className="flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+              style={{
+                background: modo === 'fiar' ? 'rgba(245,158,11,0.15)' : 'var(--bg-surface2)',
+                color: modo === 'fiar' ? '#F59E0B' : 'var(--text-muted)',
+                border: modo === 'fiar' ? '1px solid rgba(245,158,11,0.4)' : '1px solid transparent',
+              }}>
+              <CreditCard size={14} />
+              Fiar
+            </button>
+          )}
         </div>
 
         <div className="px-5 py-4 flex flex-col gap-4">
