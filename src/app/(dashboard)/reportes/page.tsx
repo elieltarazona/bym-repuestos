@@ -67,35 +67,171 @@ export default function ReportesPage() {
     try {
       const { utils, writeFile } = await import('xlsx')
 
-      // Hoja 1: Inventario
-      const inventarioData = productos.map((p) => ({
+      // Traer datos adicionales del período
+      const [ventasRes, fiadosPeriodoRes, abonosRes, fiadosPendRes] = await Promise.all([
+        supabase.from('ventas').select('*').gte('created_at', `${fechaDesde}T00:00:00`).lte('created_at', `${fechaHasta}T23:59:59`).order('created_at', { ascending: false }),
+        supabase.from('fiados').select('*, cliente:clientes_fiado(nombre, telefono)').gte('created_at', `${fechaDesde}T00:00:00`).lte('created_at', `${fechaHasta}T23:59:59`),
+        supabase.from('abonos_fiado').select('*, fiado:fiados(cliente:clientes_fiado(nombre))').gte('created_at', `${fechaDesde}T00:00:00`).lte('created_at', `${fechaHasta}T23:59:59`).order('created_at', { ascending: false }),
+        supabase.from('fiados').select('*, cliente:clientes_fiado(nombre, telefono)').eq('estado', 'pendiente').order('created_at', { ascending: false }),
+      ])
+
+      const ventas = (ventasRes.data || []) as { id: string; items: { nombre: string; cantidad: number; precio_venta: number }[]; subtotal: number; descuento: number; total: number; medio_pago: string; usuario_id: string; created_at: string }[]
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const fiadosPeriodo = (fiadosPeriodoRes.data || []) as any[]
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const abonos = (abonosRes.data || []) as any[]
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const fiadosPend = (fiadosPendRes.data || []) as any[]
+
+      // Calcular totales
+      const totalVentas = ventas.reduce((a, v) => a + v.total, 0)
+      const ventasEfectivo = ventas.filter(v => v.medio_pago === 'efectivo').reduce((a, v) => a + v.total, 0)
+      const ventasDigital = totalVentas - ventasEfectivo
+      const fiadosNuevos = fiadosPeriodo.reduce((a: number, f: { total: number }) => a + f.total, 0)
+      const cobrosTotal = abonos.reduce((a: number, ab: { monto: number }) => a + ab.monto, 0)
+      const totalPendiente = fiadosPend.reduce((a: number, f: { saldo: number }) => a + f.saldo, 0)
+      const valorCosto = productos.reduce((a, p) => a + p.precio_costo * p.stock, 0)
+      const valorVenta = productos.reduce((a, p) => a + p.precio_venta * p.stock, 0)
+
+      const wb = utils.book_new()
+      const fmt = (n: number) => `$${n.toLocaleString('es-CO', { minimumFractionDigits: 0 })}`
+
+      // ══════════════════════════════════════
+      // HOJA 1: RESUMEN GENERAL
+      // ══════════════════════════════════════
+      const resumen = [
+        ['B&M REPUESTOS Y ACCESORIOS', '', ''],
+        [`Reporte período: ${fechaDesde} al ${fechaHasta}`, '', ''],
+        ['', '', ''],
+        ['══════════ VENTAS DEL PERÍODO ══════════', '', ''],
+        ['Concepto', 'Valor', ''],
+        ['Ventas en efectivo', fmt(ventasEfectivo), ''],
+        ['Ventas digitales (Nequi, Bancolombia, etc.)', fmt(ventasDigital), ''],
+        ['TOTAL VENTAS', fmt(totalVentas), `${ventas.length} transacciones`],
+        ['', '', ''],
+        ['══════════ FIADOS DEL PERÍODO ══════════', '', ''],
+        ['Concepto', 'Valor', ''],
+        ['Nuevos fiados registrados', fmt(fiadosNuevos), `${fiadosPeriodo.length} clientes`],
+        ['Cobros de fiados en el período', fmt(cobrosTotal), `${abonos.length} pagos`],
+        ['TOTAL PENDIENTE POR COBRAR (todos)', fmt(totalPendiente), `${fiadosPend.length} fiados activos`],
+        ['', '', ''],
+        ['══════════ INVENTARIO ACTUAL ══════════', '', ''],
+        ['Concepto', 'Valor', ''],
+        ['Total productos activos', productos.length.toString(), ''],
+        ['Valor de inversión (costo × stock)', fmt(valorCosto), ''],
+        ['Valor de venta (precio venta × stock)', fmt(valorVenta), ''],
+        ['Ganancia potencial si vende todo', fmt(valorVenta - valorCosto), ''],
+        ['', '', ''],
+        ['══════════ NETO DEL NEGOCIO ══════════', '', ''],
+        ['Concepto', 'Valor', ''],
+        ['Ingresos por ventas', fmt(totalVentas), ''],
+        ['Ingresos cobrados de fiados', fmt(cobrosTotal), ''],
+        ['TOTAL INGRESOS DEL PERÍODO', fmt(totalVentas + cobrosTotal), ''],
+      ]
+      const wsResumen = utils.aoa_to_sheet(resumen)
+      wsResumen['!cols'] = [{ wch: 45 }, { wch: 20 }, { wch: 22 }]
+      utils.book_append_sheet(wb, wsResumen, 'RESUMEN')
+
+      // ══════════════════════════════════════
+      // HOJA 2: VENTAS DEL PERÍODO
+      // ══════════════════════════════════════
+      const ventasData = ventas.map(v => ({
+        Fecha: formatDateShort(v.created_at),
+        'Producto(s)': v.items.map(i => `${i.nombre} x${i.cantidad}`).join(' | '),
+        Subtotal: v.subtotal,
+        Descuento: v.descuento,
+        Total: v.total,
+        'Medio de Pago': v.medio_pago,
+        'Vendido por': profileMap[v.usuario_id]?.nombre || '—',
+        Rol: profileMap[v.usuario_id]?.rol === 'dueño' ? 'Dueño' : 'Empleado',
+      }))
+      if (ventasData.length > 0) {
+        ventasData.push({ Fecha: '', 'Producto(s)': '▶ TOTAL', Subtotal: ventas.reduce((a, v) => a + v.subtotal, 0), Descuento: ventas.reduce((a, v) => a + v.descuento, 0), Total: totalVentas, 'Medio de Pago': '', 'Vendido por': '', Rol: '' })
+      }
+      const wsVentas = utils.json_to_sheet(ventasData.length > 0 ? ventasData : [{ Nota: 'Sin ventas en el período' }])
+      wsVentas['!cols'] = [{ wch: 12 }, { wch: 45 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 16 }, { wch: 18 }, { wch: 10 }]
+      utils.book_append_sheet(wb, wsVentas, 'VENTAS')
+
+      // ══════════════════════════════════════
+      // HOJA 3: FIADOS PENDIENTES
+      // ══════════════════════════════════════
+      const fiadosPendData = fiadosPend.map((f: { cliente: { nombre: string; telefono: string }; items: { nombre: string; cantidad: number }[]; total: number; saldo: number; created_at: string }) => ({
+        '⚠ ESTADO': 'PENDIENTE',
+        Cliente: f.cliente?.nombre || '—',
+        Teléfono: f.cliente?.telefono || '—',
+        'Producto(s)': f.items.map((i: { nombre: string; cantidad: number }) => `${i.nombre} x${i.cantidad}`).join(' | '),
+        'Total Fiado': f.total,
+        'Ya Abonado': f.total - f.saldo,
+        'Saldo Pendiente': f.saldo,
+        'Fecha Fiado': formatDateShort(f.created_at),
+      }))
+      if (fiadosPendData.length > 0) {
+        fiadosPendData.push({ '⚠ ESTADO': '', Cliente: '▶ TOTAL PENDIENTE', Teléfono: '', 'Producto(s)': '', 'Total Fiado': fiadosPend.reduce((a: number, f: { total: number }) => a + f.total, 0), 'Ya Abonado': fiadosPend.reduce((a: number, f: { total: number; saldo: number }) => a + (f.total - f.saldo), 0), 'Saldo Pendiente': totalPendiente, 'Fecha Fiado': '' })
+      }
+      const wsFiados = utils.json_to_sheet(fiadosPendData.length > 0 ? fiadosPendData : [{ Nota: 'Sin fiados pendientes' }])
+      wsFiados['!cols'] = [{ wch: 12 }, { wch: 22 }, { wch: 14 }, { wch: 40 }, { wch: 14 }, { wch: 13 }, { wch: 16 }, { wch: 14 }]
+      utils.book_append_sheet(wb, wsFiados, 'FIADOS PENDIENTES')
+
+      // ══════════════════════════════════════
+      // HOJA 4: COBROS DE FIADOS
+      // ══════════════════════════════════════
+      const cobrosData = abonos.map((ab: { created_at: string; fiado: { cliente: { nombre: string } }; monto: number; medio_pago: string; usuario_id: string }) => ({
+        Fecha: formatDateShort(ab.created_at),
+        Cliente: ab.fiado?.cliente?.nombre || '—',
+        'Monto Cobrado': ab.monto,
+        'Medio de Pago': ab.medio_pago || '—',
+        'Registrado por': profileMap[ab.usuario_id]?.nombre || '—',
+        Rol: profileMap[ab.usuario_id]?.rol === 'dueño' ? 'Dueño' : 'Empleado',
+      }))
+      if (cobrosData.length > 0) {
+        cobrosData.push({ Fecha: '', Cliente: '▶ TOTAL COBRADO', 'Monto Cobrado': cobrosTotal, 'Medio de Pago': '', 'Registrado por': '', Rol: '' })
+      }
+      const wsCobros = utils.json_to_sheet(cobrosData.length > 0 ? cobrosData : [{ Nota: 'Sin cobros en el período' }])
+      wsCobros['!cols'] = [{ wch: 12 }, { wch: 22 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 10 }]
+      utils.book_append_sheet(wb, wsCobros, 'COBROS FIADOS')
+
+      // ══════════════════════════════════════
+      // HOJA 5: INVENTARIO COMPLETO
+      // ══════════════════════════════════════
+      const inventarioData = productos.map(p => ({
         Código: p.codigo,
         Nombre: p.nombre,
         Categoría: (p.categoria as { nombre: string })?.nombre ?? '',
         'Precio Costo': p.precio_costo,
         'Precio Venta': p.precio_venta,
+        'Margen %': p.precio_costo > 0 ? Math.round(((p.precio_venta - p.precio_costo) / p.precio_costo) * 100) : 0,
         Stock: p.stock,
         'Stock Mínimo': p.stock_minimo,
-        'Valor Total': p.precio_venta * p.stock,
+        Estado: p.stock === 0 ? 'SIN STOCK' : p.stock <= p.stock_minimo ? 'STOCK BAJO' : 'OK',
+        'Valor en Costo': p.precio_costo * p.stock,
+        'Valor en Venta': p.precio_venta * p.stock,
       }))
+      inventarioData.push({ Código: '', Nombre: '▶ TOTALES', Categoría: '', 'Precio Costo': 0, 'Precio Venta': 0, 'Margen %': 0, Stock: productos.reduce((a, p) => a + p.stock, 0), 'Stock Mínimo': 0, Estado: '', 'Valor en Costo': valorCosto, 'Valor en Venta': valorVenta })
+      const wsInv = utils.json_to_sheet(inventarioData)
+      wsInv['!cols'] = [{ wch: 12 }, { wch: 30 }, { wch: 15 }, { wch: 13 }, { wch: 13 }, { wch: 10 }, { wch: 8 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 14 }]
+      utils.book_append_sheet(wb, wsInv, 'INVENTARIO')
 
-      // Hoja 2: Movimientos
-      const movsData = movimientos.map((m) => ({
+      // ══════════════════════════════════════
+      // HOJA 6: MOVIMIENTOS
+      // ══════════════════════════════════════
+      const movsData = movimientos.map(m => ({
         Fecha: formatDateShort(m.created_at),
         Producto: (m.producto as { nombre: string })?.nombre ?? '',
         Código: (m.producto as { codigo: string })?.codigo ?? '',
-        Tipo: m.tipo,
-        Cantidad: m.cantidad,
+        Tipo: m.tipo.toUpperCase(),
+        Cantidad: m.tipo === 'entrada' ? `+${m.cantidad}` : `-${m.cantidad}`,
         Motivo: m.motivo || '',
+        'Registrado por': profileMap[m.usuario_id]?.nombre || '—',
+        Rol: profileMap[m.usuario_id]?.rol === 'dueño' ? 'Dueño' : 'Empleado',
       }))
-
-      const wb = utils.book_new()
-      utils.book_append_sheet(wb, utils.json_to_sheet(inventarioData), 'Inventario')
-      utils.book_append_sheet(wb, utils.json_to_sheet(movsData), 'Movimientos')
+      const wsMovs = utils.json_to_sheet(movsData.length > 0 ? movsData : [{ Nota: 'Sin movimientos en el período' }])
+      wsMovs['!cols'] = [{ wch: 12 }, { wch: 30 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 28 }, { wch: 18 }, { wch: 10 }]
+      utils.book_append_sheet(wb, wsMovs, 'MOVIMIENTOS')
 
       writeFile(wb, `BYM_Reporte_${fechaDesde}_${fechaHasta}.xlsx`)
-      toast.success('Excel exportado')
-    } catch {
+      toast.success('Excel exportado correctamente')
+    } catch (err) {
+      console.error(err)
       toast.error('Error exportando Excel')
     }
   }

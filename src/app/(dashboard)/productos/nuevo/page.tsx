@@ -457,18 +457,27 @@ export default function NuevoProductoPage() {
           {/* Foto */}
           <div className={fieldClass}>
             <label className={labelClass} style={{ color: 'var(--text-muted)' }}>Foto del producto</label>
-            <label className="flex flex-col items-center justify-center gap-2 py-6 rounded-xl cursor-pointer"
-              style={{ border: '2px dashed var(--bg-surface3)', color: 'var(--text-muted)' }}>
-              {form.foto_url ? (
-                <img src={form.foto_url} alt="preview" className="h-24 object-contain rounded-lg" />
-              ) : (
-                <>
-                  <Upload size={24} />
-                  <span className="text-sm">{uploading ? 'Subiendo...' : 'Haz clic para subir imagen'}</span>
-                </>
-              )}
-              <input type="file" accept="image/*" className="hidden" onChange={handleFotoUpload} />
-            </label>
+            {/* Preview */}
+            {form.foto_url && (
+              <div className="flex justify-center mb-3">
+                <img src={form.foto_url} alt="preview" className="h-28 object-contain rounded-xl" />
+              </div>
+            )}
+            {/* Botones galería y cámara */}
+            <div className="grid grid-cols-2 gap-2">
+              <label className="flex flex-col items-center justify-center gap-1.5 py-4 rounded-xl cursor-pointer transition-all"
+                style={{ border: '2px dashed var(--bg-surface3)', color: 'var(--text-muted)' }}>
+                <Upload size={20} />
+                <span className="text-xs font-semibold">{uploading ? 'Subiendo...' : 'Galería'}</span>
+                <input type="file" accept="image/*" className="hidden" onChange={handleFotoUpload} />
+              </label>
+              <label className="flex flex-col items-center justify-center gap-1.5 py-4 rounded-xl cursor-pointer transition-all"
+                style={{ border: '2px dashed rgba(37,99,235,0.4)', color: 'var(--primary-light)' }}>
+                <span className="text-xl">📷</span>
+                <span className="text-xs font-semibold">{uploading ? 'Subiendo...' : 'Tomar foto'}</span>
+                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFotoUpload} />
+              </label>
+            </div>
           </div>
         </div>
 
