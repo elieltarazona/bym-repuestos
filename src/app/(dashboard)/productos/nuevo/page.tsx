@@ -442,7 +442,7 @@ export default function NuevoProductoPage() {
               <label className={labelClass} style={{ color: 'var(--text-muted)' }}>Categoría</label>
               <select name="categoria_id" value={form.categoria_id} onChange={handleChange}>
                 <option value="">Sin categoría</option>
-                {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                {categorias.map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} - ` : ''}{c.nombre}</option>)}
               </select>
             </div>
             <div className={fieldClass}>

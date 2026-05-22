@@ -7,7 +7,7 @@ import { useProfile } from '@/lib/profile-context'
 import { Building2, Tag, Truck, Plus, Pencil, Trash2, Check, X, Save } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-interface Categoria { id: string; nombre: string }
+interface Categoria { id: string; nombre: string; codigo?: number }
 interface Proveedor { id: string; nombre: string; telefono?: string; email?: string }
 
 const NEGOCIO_KEY = 'bym_negocio_config'
@@ -28,6 +28,7 @@ export default function ConfiguracionPage() {
   // Categorías
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [nuevaCat, setNuevaCat] = useState('')
+  const [buscarCat, setBuscarCat] = useState('')
   const [editandoCat, setEditandoCat] = useState<string | null>(null)
   const [editValCat, setEditValCat] = useState('')
   const [loadingCat, setLoadingCat] = useState(true)
@@ -205,6 +206,16 @@ export default function ConfiguracionPage() {
             </span>
           </div>
 
+          {/* Buscar */}
+          <div className="mb-3">
+            <input
+              type="text"
+              placeholder="Buscar por nombre o código (ej: 202600)..."
+              value={buscarCat}
+              onChange={e => setBuscarCat(e.target.value)}
+            />
+          </div>
+
           {/* Agregar nueva */}
           <div className="flex gap-2 mb-5">
             <input
@@ -229,11 +240,22 @@ export default function ConfiguracionPage() {
             </div>
           ) : (
             <div className="flex flex-col gap-2">
-              {categorias.map(cat => (
+              {categorias
+                .filter(c =>
+                  c.nombre.toLowerCase().includes(buscarCat.toLowerCase()) ||
+                  String(c.codigo ?? '').includes(buscarCat)
+                )
+                .map(cat => (
                 <div key={cat.id} className="flex items-center gap-3 px-4 py-3 rounded-xl"
                   style={{ background: 'var(--bg-surface2)', border: '1px solid var(--bg-surface3)' }}>
                   {editandoCat === cat.id ? (
                     <>
+                      {cat.codigo && (
+                        <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-md shrink-0"
+                          style={{ background: 'var(--bg-surface3)', color: 'var(--text-muted)' }}>
+                          {cat.codigo}
+                        </span>
+                      )}
                       <input value={editValCat} onChange={e => setEditValCat(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && guardarEditCat(cat.id)}
                         style={{ flex: 1, padding: '0.25rem 0.5rem', fontSize: '0.875rem' }} autoFocus />
@@ -242,6 +264,12 @@ export default function ConfiguracionPage() {
                     </>
                   ) : (
                     <>
+                      {cat.codigo && (
+                        <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-md shrink-0"
+                          style={{ background: 'var(--bg-surface3)', color: 'var(--text-muted)' }}>
+                          {cat.codigo}
+                        </span>
+                      )}
                       <span className="flex-1 text-sm" style={{ color: 'var(--text)' }}>{cat.nombre}</span>
                       <button onClick={() => { setEditandoCat(cat.id); setEditValCat(cat.nombre) }}
                         style={{ color: 'var(--text-muted)' }}><Pencil size={15} /></button>

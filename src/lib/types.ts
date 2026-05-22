@@ -11,6 +11,7 @@ export interface Profile {
 export interface Categoria {
   id: string
   nombre: string
+  codigo?: number
   created_at: string
 }
 
