@@ -37,9 +37,9 @@ export default function Sidebar() {
       <div className="px-4 py-5 flex items-center justify-center" style={{ borderBottom: '1px solid var(--bg-surface2)' }}>
         <div className="relative w-16 h-16 overflow-hidden" style={{
           borderRadius: '16px',
-          outline: '2px solid rgba(59,130,246,0.5)',
+          outline: '2px solid rgba(204,17,17,0.5)',
           outlineOffset: '3px',
-          boxShadow: '0 0 20px rgba(37,99,235,0.35)',
+          boxShadow: '0 0 20px rgba(204,17,17,0.35)',
         }}>
           <Image src="/logo.png" alt="B&M" fill style={{ objectFit: 'cover' }} priority />
         </div>
@@ -56,7 +56,7 @@ export default function Sidebar() {
               onClick={() => setOpen(false)}
               className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150"
               style={{
-                background: active ? 'rgba(37, 99, 235, 0.15)' : 'transparent',
+                background: active ? 'rgba(204, 17, 17, 0.15)' : 'transparent',
                 color: active ? 'var(--primary-light)' : 'var(--text-muted)',
                 borderLeft: active ? '3px solid var(--primary-light)' : '3px solid transparent',
               }}

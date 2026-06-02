@@ -1,19 +1,19 @@
 @import "tailwindcss";
 
 :root {
-  --bg-base: #C8D0DC;
-  --bg-surface: #132040;
-  --bg-surface2: #1B2D55;
-  --bg-surface3: #243968;
-  --primary: #2563EB;
-  --primary-light: #3B82F6;
+  --bg-base: #111111;
+  --bg-surface: #0D0D0D;
+  --bg-surface2: #1C1C1C;
+  --bg-surface3: #2A2A2A;
+  --primary: #CC1111;
+  --primary-light: #E53535;
   --accent: #F59E0B;
   --accent-light: #FCD34D;
-  --text: #F0F6FF;
-  --text-page: #0D1B35;
-  --text-page-muted: #3D5478;
-  --text-muted: #7FA4D0;
-  --border: #1B2D55;
+  --text: #F5F5F5;
+  --text-page: #1A1A1A;
+  --text-page-muted: #666666;
+  --text-muted: #888888;
+  --border: #2A2A2A;
   --success: #10B981;
   --danger: #EF4444;
   --warning: #F59E0B;
@@ -48,7 +48,7 @@ input, select, textarea {
 
 input:focus, select:focus, textarea:focus {
   border-color: var(--primary-light) !important;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 0 0 2px rgba(204, 17, 17, 0.25);
 }
 
 input::placeholder, textarea::placeholder { color: var(--text-muted) !important; }
