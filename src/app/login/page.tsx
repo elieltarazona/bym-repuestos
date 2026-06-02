@@ -7,11 +7,11 @@ import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 
 const inputBase: React.CSSProperties = {
-  background: 'rgba(19,32,64,0.7)',
-  border: '1.5px solid rgba(59,130,246,0.2)',
+  background: 'rgba(28,28,28,0.9)',
+  border: '1.5px solid rgba(204,17,17,0.2)',
   borderRadius: '12px',
   padding: '0.65rem 0.9rem',
-  color: '#F0F6FF',
+  color: '#F5F5F5',
   width: '100%',
   fontSize: '0.9rem',
   outline: 'none',
@@ -20,9 +20,9 @@ const inputBase: React.CSSProperties = {
 
 const inputFocus: React.CSSProperties = {
   ...inputBase,
-  borderColor: '#3B82F6',
-  background: 'rgba(27,45,85,0.9)',
-  boxShadow: '0 0 0 3px rgba(59,130,246,0.2), 0 0 20px rgba(59,130,246,0.15)',
+  borderColor: '#CC1111',
+  background: 'rgba(42,42,42,0.9)',
+  boxShadow: '0 0 0 3px rgba(204,17,17,0.2), 0 0 20px rgba(204,17,17,0.1)',
 }
 
 export default function LoginPage() {
@@ -65,17 +65,17 @@ export default function LoginPage() {
   return (
     <div
       className="relative min-h-screen flex items-center justify-center px-4 overflow-hidden"
-      style={{ background: '#0D1B35' }}
+      style={{ background: '#111111' }}
     >
       {/* Logo de fondo — más visible */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
-        <div style={{ opacity: 0.18, filter: 'blur(1px)', transform: 'scale(1.5)' }}>
+        <div style={{ opacity: 0.12, filter: 'blur(1px)', transform: 'scale(1.5)' }}>
           <Image src="/logo.png" alt="" width={560} height={560} priority style={{ objectFit: 'contain' }} />
         </div>
       </div>
       <div
         className="absolute inset-0 pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse at center, transparent 15%, #0D1B35 70%)' }}
+        style={{ background: 'radial-gradient(ellipse at center, transparent 15%, #111111 70%)' }}
       />
 
       <div className="relative z-10 w-full max-w-sm fade-in">
@@ -87,9 +87,9 @@ export default function LoginPage() {
               style={{
                 borderRadius: '20px',
                 overflow: 'hidden',
-                outline: '2px solid rgba(59,130,246,0.5)',
+                outline: '2px solid rgba(204,17,17,0.5)',
                 outlineOffset: '5px',
-                boxShadow: '0 0 50px rgba(37,99,235,0.45), 0 0 100px rgba(37,99,235,0.15)',
+                boxShadow: '0 0 50px rgba(204,17,17,0.45), 0 0 100px rgba(204,17,17,0.15)',
                 animation: 'logoPulse 3s ease-in-out infinite',
               }}
             >
@@ -103,8 +103,8 @@ export default function LoginPage() {
               />
             </div>
           </div>
-          <h1 className="text-2xl font-black" style={{ color: '#F0F6FF', letterSpacing: '-0.5px' }}>B&M Repuestos</h1>
-          <p className="text-sm font-medium mt-0.5" style={{ color: '#3B82F6' }}>Sistema de Inventario</p>
+          <h1 className="text-2xl font-black" style={{ color: '#F5F5F5', letterSpacing: '-0.5px' }}>B&M Repuestos</h1>
+          <p className="text-sm font-medium mt-0.5" style={{ color: '#E53535' }}>Sistema de Inventario</p>
         </div>
 
         {/* Card con glassmorphism */}
@@ -115,14 +115,14 @@ export default function LoginPage() {
           onMouseDown={() => setCardClick(true)}
           onMouseUp={() => setCardClick(false)}
           style={{
-            background: 'rgba(19,32,64,0.75)',
-            border: `1px solid ${cardHover ? 'rgba(59,130,246,0.45)' : 'rgba(59,130,246,0.2)'}`,
+            background: 'rgba(20,20,20,0.85)',
+            border: `1px solid ${cardHover ? 'rgba(204,17,17,0.45)' : 'rgba(204,17,17,0.2)'}`,
             backdropFilter: 'blur(20px)',
             boxShadow: cardClick
-              ? '0 8px 20px rgba(0,0,0,0.6), 0 0 40px rgba(37,99,235,0.4), inset 0 1px 0 rgba(255,255,255,0.06)'
+              ? '0 8px 20px rgba(0,0,0,0.7), 0 0 40px rgba(204,17,17,0.3), inset 0 1px 0 rgba(255,255,255,0.05)'
               : cardHover
-              ? '0 30px 80px rgba(0,0,0,0.6), 0 0 60px rgba(37,99,235,0.35), 0 0 120px rgba(59,130,246,0.15), inset 0 1px 0 rgba(255,255,255,0.08)'
-              : '0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)',
+              ? '0 30px 80px rgba(0,0,0,0.7), 0 0 60px rgba(204,17,17,0.3), 0 0 120px rgba(204,17,17,0.1), inset 0 1px 0 rgba(255,255,255,0.07)'
+              : '0 20px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05)',
             transform: cardClick
               ? 'scale(0.985)'
               : cardHover
@@ -131,14 +131,14 @@ export default function LoginPage() {
             transition: 'transform 0.25s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.25s ease, border-color 0.25s ease',
           }}
         >
-          <h2 className="text-lg font-bold mb-5" style={{ color: '#F0F6FF' }}>
+          <h2 className="text-lg font-bold mb-5" style={{ color: '#F5F5F5' }}>
             {mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
           </h2>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             {mode === 'register' && (
               <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: '#7FA4D0' }}>Nombre completo</label>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: '#888888' }}>Nombre completo</label>
                 <input
                   type="text"
                   placeholder="Tu nombre"
@@ -153,7 +153,7 @@ export default function LoginPage() {
             )}
 
             <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: '#7FA4D0' }}>Correo electrónico</label>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: '#888888' }}>Correo electrónico</label>
               <input
                 type="email"
                 placeholder="correo@ejemplo.com"
@@ -167,7 +167,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: '#7FA4D0' }}>Contraseña</label>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: '#888888' }}>Contraseña</label>
               <input
                 type="password"
                 placeholder="••••••••"
@@ -189,13 +189,13 @@ export default function LoginPage() {
               className="mt-1 py-3.5 rounded-2xl font-bold text-white transition-all duration-200 disabled:opacity-50"
               style={{
                 background: loading
-                  ? 'rgba(37,99,235,0.4)'
+                  ? 'rgba(204,17,17,0.4)'
                   : btnHover
-                  ? 'linear-gradient(135deg, #2563EB 0%, #60A5FA 100%)'
-                  : 'linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%)',
+                  ? 'linear-gradient(135deg, #CC1111 0%, #FF4444 100%)'
+                  : 'linear-gradient(135deg, #8B0000 0%, #CC1111 100%)',
                 boxShadow: btnHover && !loading
-                  ? '0 8px 30px rgba(59,130,246,0.5), 0 0 0 1px rgba(59,130,246,0.3)'
-                  : '0 4px 15px rgba(37,99,235,0.3)',
+                  ? '0 8px 30px rgba(204,17,17,0.5), 0 0 0 1px rgba(204,17,17,0.3)'
+                  : '0 4px 15px rgba(204,17,17,0.3)',
                 transform: btnHover && !loading ? 'translateY(-1px)' : 'translateY(0)',
               }}
             >
@@ -214,15 +214,15 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <p className="text-center text-xs mt-5" style={{ color: '#3D5478' }}>
+        <p className="text-center text-xs mt-5" style={{ color: '#555555' }}>
           © 2025 B&M Repuestos y Accesorios
         </p>
       </div>
 
       <style jsx global>{`
         @keyframes logoPulse {
-          0%, 100% { box-shadow: 0 0 50px rgba(37,99,235,0.45), 0 0 100px rgba(37,99,235,0.15); }
-          50% { box-shadow: 0 0 70px rgba(59,130,246,0.7), 0 0 140px rgba(59,130,246,0.25); }
+          0%, 100% { box-shadow: 0 0 50px rgba(204,17,17,0.45), 0 0 100px rgba(204,17,17,0.15); }
+          50% { box-shadow: 0 0 70px rgba(204,17,17,0.7), 0 0 140px rgba(204,17,17,0.25); }
         }
       `}</style>
     </div>

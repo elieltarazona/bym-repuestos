@@ -188,7 +188,7 @@ export default function ConfiguracionPage() {
               onClick={guardarNegocio}
               disabled={guardandoNegocio}
               className="mt-2 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-60"
-              style={{ background: 'linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%)' }}>
+              style={{ background: 'linear-gradient(135deg, #8B0000 0%, #CC1111 100%)' }}>
               <Save size={15} />
               {guardandoNegocio ? 'Guardando...' : 'Guardar datos'}
             </button>
