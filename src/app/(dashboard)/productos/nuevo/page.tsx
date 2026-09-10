@@ -4,13 +4,16 @@ import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { generateCodigo } from '@/lib/utils'
-import type { Categoria, Proveedor } from '@/lib/types'
-import { ArrowLeft, RefreshCw, Upload, ChevronDown } from 'lucide-react'
+import type { Categoria, Proveedor, Producto } from '@/lib/types'
+import { ArrowLeft, RefreshCw, Upload, ChevronDown, QrCode } from 'lucide-react'
 import { useProfile } from '@/lib/profile-context'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import Scanner from '@/components/Scanner'
+import ModalDetalleEscaneo from '@/components/ModalDetalleEscaneo'
 
 // Lista completa de productos de moto usados en Colombia
+
 const SUGERENCIAS_PRODUCTOS = [
   // ── ACEITES ──
   'Aceite Motor 4T 10W-40', 'Aceite Motor 4T 20W-50', 'Aceite Motor 4T 15W-50',
@@ -214,6 +217,12 @@ export default function NuevoProductoPage() {
   const [showSugerencias, setShowSugerencias] = useState(false)
   const nombreRef = useRef<HTMLDivElement>(null)
 
+  // Escáner y verificación de existencia
+  const [showScanner, setShowScanner] = useState(false)
+  const [productoExistente, setProductoExistente] = useState<Producto | null>(null)
+  const [escaneoLoading, setEscaneoLoading] = useState(false)
+  const [codigoEscaneado, setCodigoEscaneado] = useState('')
+
   const [form, setForm] = useState({
     nombre: '', descripcion: '', codigo: generateCodigo(), codigo_barras: '',
     precio_costo: '', precio_venta: '', stock: '', stock_minimo: '5',
@@ -229,6 +238,16 @@ export default function NuevoProductoPage() {
       setProveedores(provs.data || [])
     })
 
+    // Leer parámetro URL por si proviene del escáner de inventario
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const codeFromUrl = params.get('codigo_barras') || params.get('barcode')
+      if (codeFromUrl) {
+        setForm(prev => ({ ...prev, codigo_barras: codeFromUrl }))
+        toast.success(`Código asignado: ${codeFromUrl}`)
+      }
+    }
+
     // Cerrar sugerencias al hacer clic fuera
     function handleClick(e: MouseEvent) {
       if (nombreRef.current && !nombreRef.current.contains(e.target as Node)) {
@@ -238,6 +257,35 @@ export default function NuevoProductoPage() {
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
+
+  async function handleScan(code: string) {
+    setShowScanner(false)
+    const scanned = code.trim()
+    if (!scanned) return
+
+    setForm(prev => ({ ...prev, codigo_barras: scanned }))
+
+    // Verificar en Supabase si ya existe un producto con ese código
+    setEscaneoLoading(true)
+    setCodigoEscaneado(scanned)
+
+    const { data } = await supabase
+      .from('productos')
+      .select('*, categoria:categorias(nombre), proveedor:proveedores(nombre)')
+      .or(`codigo_barras.eq.${scanned},codigo.eq.${scanned}`)
+      .eq('activo', true)
+      .maybeSingle()
+
+    setEscaneoLoading(false)
+
+    if (data) {
+      setProductoExistente((data as unknown) as Producto)
+      toast.error(`⚠️ El código ya pertenece al producto: ${data.nombre}`)
+    } else {
+      toast.success(`Código asignado: ${scanned}`)
+    }
+  }
+
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
@@ -308,6 +356,26 @@ export default function NuevoProductoPage() {
 
   return (
     <div className="fade-in max-w-2xl">
+      {/* Escáner de Cámara */}
+      {showScanner && (
+        <Scanner
+          onScan={handleScan}
+          onClose={() => setShowScanner(false)}
+          titulo="Escanear código del nuevo producto"
+        />
+      )}
+
+      {/* Modal si el producto escaneado ya existe */}
+      {productoExistente && (
+        <ModalDetalleEscaneo
+          codigoEscaneado={codigoEscaneado}
+          producto={productoExistente}
+          loading={escaneoLoading}
+          onClose={() => setProductoExistente(null)}
+          onAbrirGestion={() => router.push('/inventario')}
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <Link href="/inventario" className="p-2 rounded-xl" style={{ color: 'var(--text-muted)', background: 'var(--bg-surface)' }}>
@@ -403,11 +471,30 @@ export default function NuevoProductoPage() {
               </div>
               <div className={fieldClass}>
                 <label className={labelClass} style={{ color: 'var(--text-muted)' }}>Código de barras / QR</label>
-                <input name="codigo_barras" value={form.codigo_barras} onChange={handleChange} placeholder="Opcional" />
+                <div className="flex gap-2">
+                  <input
+                    name="codigo_barras"
+                    value={form.codigo_barras}
+                    onChange={handleChange}
+                    placeholder="Escribe o escanea..."
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowScanner(true)}
+                    className="px-3 rounded-xl flex items-center justify-center gap-1.5 text-xs font-semibold"
+                    style={{ background: 'rgba(37,99,235,0.15)', color: 'var(--primary-light)', border: '1px solid rgba(37,99,235,0.3)' }}
+                    title="Escanear con cámara"
+                  >
+                    <QrCode size={16} />
+                    <span className="hidden sm:inline">Escanear</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
+
 
         {/* Precios y stock */}
         <div className="rounded-2xl p-6 mb-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--bg-surface2)' }}>

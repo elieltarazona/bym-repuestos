@@ -8,7 +8,10 @@ import type { Producto } from '@/lib/types'
 import ModalVenta from '@/components/ModalVenta'
 import PanelGestion from '@/components/PanelGestion'
 import PanelFiados from '@/components/PanelFiados'
-import { Search, Package, Plus, Settings2, CreditCard } from 'lucide-react'
+import ModalGestion from '@/components/ModalGestion'
+import Scanner from '@/components/Scanner'
+import ModalDetalleEscaneo from '@/components/ModalDetalleEscaneo'
+import { Search, Package, Plus, Settings2, CreditCard, QrCode } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const CATEGORIA_EMOJI: Record<string, string> = {
@@ -33,8 +36,16 @@ export default function InventarioPage() {
   const [search, setSearch] = useState('')
   const [categoriaActiva, setCategoriaActiva] = useState('Todos')
   const [productoVenta, setProductoVenta] = useState<Producto | null>(null)
+  const [productoGestion, setProductoGestion] = useState<Producto | null>(null)
   const [panelGestion, setPanelGestion] = useState(false)
   const [panelFiados, setPanelFiados] = useState(false)
+
+  // Escáner de producto
+  const [showScanner, setShowScanner] = useState(false)
+  const [showDetalleEscaneo, setShowDetalleEscaneo] = useState(false)
+  const [codigoEscaneado, setCodigoEscaneado] = useState('')
+  const [productoEscaneado, setProductoEscaneado] = useState<Producto | null>(null)
+  const [escaneoLoading, setEscaneoLoading] = useState(false)
 
   useEffect(() => { loadData() }, [])
 
@@ -47,6 +58,30 @@ export default function InventarioPage() {
     setProductos((prodsRes.data || []) as Producto[])
     setCategorias(['Todos', ...(catsRes.data?.map(c => c.nombre) || [])])
     setLoading(false)
+  }
+
+  async function handleScan(code: string) {
+    setShowScanner(false)
+    const scanned = code.trim()
+    if (!scanned) return
+
+    setCodigoEscaneado(scanned)
+    setEscaneoLoading(true)
+    setShowDetalleEscaneo(true)
+
+    const { data } = await supabase
+      .from('productos')
+      .select('*, categoria:categorias(nombre), proveedor:proveedores(nombre)')
+      .or(`codigo_barras.eq.${scanned},codigo.eq.${scanned}`)
+      .eq('activo', true)
+      .maybeSingle()
+
+    setEscaneoLoading(false)
+    if (data) {
+      setProductoEscaneado((data as unknown) as Producto)
+    } else {
+      setProductoEscaneado(null)
+    }
   }
 
   const filtered = useMemo(() => {
@@ -84,8 +119,32 @@ export default function InventarioPage() {
 
   return (
     <div className="fade-in">
+      {/* Scanner Modal */}
+      {showScanner && (
+        <Scanner
+          onScan={handleScan}
+          onClose={() => setShowScanner(false)}
+          titulo="Escanear producto"
+        />
+      )}
+
+      {/* Modal Detalle del producto detectado por escáner */}
+      {showDetalleEscaneo && (
+        <ModalDetalleEscaneo
+          codigoEscaneado={codigoEscaneado}
+          producto={productoEscaneado}
+          loading={escaneoLoading}
+          onClose={() => setShowDetalleEscaneo(false)}
+          onAbrirVenta={(p) => setProductoVenta(p)}
+          onAbrirGestion={(p) => setProductoGestion(p)}
+        />
+      )}
+
       {productoVenta && (
         <ModalVenta producto={productoVenta} onClose={() => setProductoVenta(null)} onVendido={loadData} />
+      )}
+      {productoGestion && (
+        <ModalGestion producto={productoGestion} onClose={() => setProductoGestion(null)} onActualizado={loadData} />
       )}
       {panelGestion && (
         <PanelGestion onClose={() => setPanelGestion(false)} onActualizado={loadData} />
@@ -102,7 +161,17 @@ export default function InventarioPage() {
             {filtered.length} productos · Toca para vender
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Botón escanear QR / Barra */}
+          <button
+            onClick={() => setShowScanner(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all shadow-md hover:opacity-95"
+            style={{ background: 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)', boxShadow: '0 4px 12px rgba(37,99,235,0.25)' }}
+          >
+            <QrCode size={17} />
+            <span>Escanear QR / Barra</span>
+          </button>
+
           {/* Botón fiados */}
           <button
             onClick={() => setPanelFiados(true)}
@@ -144,7 +213,16 @@ export default function InventarioPage() {
           onChange={e => setSearch(e.target.value)}
           style={{ border: 'none !important', background: 'transparent !important', padding: '0', fontSize: '0.9rem', flex: 1 }}
         />
+        <button
+          onClick={() => setShowScanner(true)}
+          className="p-1.5 rounded-lg flex items-center justify-center transition-colors"
+          style={{ background: 'rgba(37,99,235,0.12)', color: 'var(--primary-light)' }}
+          title="Escanear código con cámara"
+        >
+          <QrCode size={18} />
+        </button>
       </div>
+
 
       {/* Tabs de categorías */}
       <div className="flex gap-2 overflow-x-auto pb-2 mb-5" style={{ scrollbarWidth: 'none' }}>
