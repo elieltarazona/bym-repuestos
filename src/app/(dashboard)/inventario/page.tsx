@@ -137,6 +137,7 @@ export default function InventarioPage() {
           onClose={() => setShowDetalleEscaneo(false)}
           onAbrirVenta={(p) => setProductoVenta(p)}
           onAbrirGestion={(p) => setProductoGestion(p)}
+          onActualizado={loadData}
         />
       )}
 

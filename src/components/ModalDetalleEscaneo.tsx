@@ -1,10 +1,13 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 import { formatCurrency } from '@/lib/utils'
 import type { Producto } from '@/lib/types'
-import { X, CheckCircle2, AlertTriangle, Plus, ShoppingCart, PackagePlus, Tag, Truck, Barcode, ArrowRight } from 'lucide-react'
+import { X, CheckCircle2, AlertTriangle, Plus, ShoppingCart, PackagePlus, Tag, Truck, Barcode, ArrowRight, Link2, Search, Check, Loader2 } from 'lucide-react'
 import { useProfile } from '@/lib/profile-context'
+import toast from 'react-hot-toast'
 
 interface ModalDetalleEscaneoProps {
   codigoEscaneado: string
@@ -13,6 +16,7 @@ interface ModalDetalleEscaneoProps {
   onClose: () => void
   onAbrirVenta?: (producto: Producto) => void
   onAbrirGestion?: (producto: Producto) => void
+  onActualizado?: () => void
 }
 
 export default function ModalDetalleEscaneo({
@@ -22,9 +26,62 @@ export default function ModalDetalleEscaneo({
   onClose,
   onAbrirVenta,
   onAbrirGestion,
+  onActualizado,
 }: ModalDetalleEscaneoProps) {
   const router = useRouter()
   const { esDueno } = useProfile()
+
+  const [modoVincular, setModoVincular] = useState(false)
+  const [productosDisponibles, setProductosDisponibles] = useState<Producto[]>([])
+  const [loadingProds, setLoadingProds] = useState(false)
+  const [busquedaProd, setBusquedaProd] = useState('')
+  const [productoSeleccionado, setProductoSeleccionado] = useState<Producto | null>(null)
+  const [vinculando, setVinculando] = useState(false)
+
+  useEffect(() => {
+    if (modoVincular && productosDisponibles.length === 0) {
+      cargarProductos()
+    }
+  }, [modoVincular])
+
+  async function cargarProductos() {
+    setLoadingProds(true)
+    const { data, error } = await supabase
+      .from('productos')
+      .select('*, categoria:categorias(nombre)')
+      .eq('activo', true)
+      .order('nombre')
+    
+    if (error) {
+      toast.error('Error cargando lista de productos')
+    } else {
+      setProductosDisponibles((data || []) as Producto[])
+    }
+    setLoadingProds(false)
+  }
+
+  async function handleVincularCodigo() {
+    if (!productoSeleccionado) return
+    setVinculando(true)
+
+    const { error } = await supabase
+      .from('productos')
+      .update({
+        codigo_barras: codigoEscaneado,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', productoSeleccionado.id)
+
+    setVinculando(false)
+
+    if (error) {
+      toast.error(`Error vinculando código: ${error.message}`)
+    } else {
+      toast.success(`✅ Código ${codigoEscaneado} vinculado a ${productoSeleccionado.nombre}`)
+      onActualizado?.()
+      onClose()
+    }
+  }
 
   const catNombre = (producto?.categoria as { nombre?: string })?.nombre || 'Sin categoría'
   const provNombre = (producto?.proveedor as { nombre?: string })?.nombre || 'Sin proveedor'
@@ -33,6 +90,14 @@ export default function ModalDetalleEscaneo({
     onClose()
     router.push(`/productos/nuevo?codigo_barras=${encodeURIComponent(codigoEscaneado)}`)
   }
+
+  const productosFiltrados = busquedaProd.trim()
+    ? productosDisponibles.filter(p =>
+        p.nombre.toLowerCase().includes(busquedaProd.toLowerCase()) ||
+        p.codigo.toLowerCase().includes(busquedaProd.toLowerCase()) ||
+        (p.categoria as { nombre?: string })?.nombre?.toLowerCase().includes(busquedaProd.toLowerCase())
+      )
+    : productosDisponibles
 
   return (
     <div
@@ -218,6 +283,112 @@ export default function ModalDetalleEscaneo({
                 )}
               </div>
             </div>
+          ) : modoVincular ? (
+            /* VISTA DE VINCULACIÓN A PRODUCTO EXISTENTE */
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Link2 size={18} style={{ color: 'var(--primary-light)' }} />
+                  <span className="font-bold text-sm" style={{ color: 'var(--text)' }}>
+                    Vincular Código a Producto
+                  </span>
+                </div>
+                <button
+                  onClick={() => setModoVincular(false)}
+                  className="text-xs font-semibold text-muted hover:underline"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  Volver
+                </button>
+              </div>
+
+              <div
+                className="py-2 px-3 rounded-xl font-mono text-xs font-bold text-center"
+                style={{ background: 'var(--bg-surface2)', color: 'var(--primary-light)', border: '1px dashed var(--bg-surface3)' }}
+              >
+                Código escaneado: {codigoEscaneado}
+              </div>
+
+              {/* Buscador de producto a vincular */}
+              <div className="relative">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+                <input
+                  type="text"
+                  placeholder="Buscar producto existente por nombre o código..."
+                  value={busquedaProd}
+                  onChange={e => setBusquedaProd(e.target.value)}
+                  style={{ paddingLeft: '2.2rem', fontSize: '0.85rem' }}
+                />
+              </div>
+
+              {/* Lista de productos para seleccionar */}
+              <div
+                className="max-h-52 overflow-y-auto rounded-xl flex flex-col gap-1.5 p-1"
+                style={{ background: 'var(--bg-surface2)', border: '1px solid var(--bg-surface3)' }}
+              >
+                {loadingProds ? (
+                  <div className="flex items-center justify-center py-8 gap-2">
+                    <Loader2 size={18} className="animate-spin" style={{ color: 'var(--primary-light)' }} />
+                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Cargando productos...</span>
+                  </div>
+                ) : productosFiltrados.length === 0 ? (
+                  <div className="text-center py-6 text-xs" style={{ color: 'var(--text-muted)' }}>
+                    No se encontraron productos coincidentes
+                  </div>
+                ) : (
+                  productosFiltrados.map(p => {
+                    const seleccionado = productoSeleccionado?.id === p.id
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => setProductoSeleccionado(p)}
+                        className="flex items-center justify-between p-2.5 rounded-lg text-left transition-all"
+                        style={{
+                          background: seleccionado ? 'rgba(37,99,235,0.2)' : 'transparent',
+                          border: seleccionado ? '1px solid var(--primary-light)' : '1px solid transparent',
+                        }}
+                      >
+                        <div className="min-w-0 flex-1 pr-2">
+                          <p className="text-xs font-bold truncate" style={{ color: 'var(--text)' }}>
+                            {p.nombre}
+                          </p>
+                          <p className="text-[11px] font-mono" style={{ color: 'var(--accent)' }}>
+                            {p.codigo} {p.codigo_barras ? `· Actual: ${p.codigo_barras}` : '· (Sin barcode)'}
+                          </p>
+                        </div>
+                        {seleccionado && <Check size={16} style={{ color: 'var(--primary-light)' }} />}
+                      </button>
+                    )
+                  })
+                )}
+              </div>
+
+              {/* Botón Vincular */}
+              <div className="flex gap-2 mt-1">
+                <button
+                  onClick={() => setModoVincular(false)}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-semibold"
+                  style={{ background: 'var(--bg-surface2)', color: 'var(--text-muted)' }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleVincularCodigo}
+                  disabled={!productoSeleccionado || vinculando}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  style={{ background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)' }}
+                >
+                  {vinculando ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <>
+                      <Link2 size={15} />
+                      Vincular Código
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           ) : (
             /* PRODUCTO NO ENCONTRADO */
             <div className="flex flex-col gap-4 text-center py-2">
@@ -245,25 +416,37 @@ export default function ModalDetalleEscaneo({
               </div>
 
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                ¿Deseas agregar un nuevo producto utilizando este código de barras/QR?
+                ¿Qué deseas hacer con este código escaneado?
               </p>
 
-              <div className="flex gap-3 mt-1">
+              <div className="flex flex-col gap-2.5 mt-1">
+                {/* Botón Vincular a producto existente */}
                 <button
-                  onClick={onClose}
-                  className="flex-1 py-3 rounded-xl text-xs font-semibold"
-                  style={{ background: 'var(--bg-surface2)', color: 'var(--text-muted)' }}
+                  onClick={() => setModoVincular(true)}
+                  className="w-full py-3 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-2 transition-all shadow-sm"
+                  style={{ background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)' }}
                 >
-                  Cancelar
+                  <Link2 size={16} />
+                  Vincular a producto ya existente
                 </button>
+
+                {/* Botón Crear nuevo producto */}
                 <button
                   onClick={handleCrearNuevo}
-                  className="flex-1 py-3 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5"
+                  className="w-full py-3 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-2 transition-all"
                   style={{ background: 'linear-gradient(135deg, #1E3A8A 0%, #2563EB 100%)' }}
                 >
                   <Plus size={16} />
-                  Crear Producto
+                  Crear como nuevo producto
                   <ArrowRight size={14} />
+                </button>
+
+                <button
+                  onClick={onClose}
+                  className="w-full py-2.5 rounded-xl text-xs font-semibold"
+                  style={{ background: 'var(--bg-surface2)', color: 'var(--text-muted)' }}
+                >
+                  Cancelar
                 </button>
               </div>
             </div>
@@ -273,3 +456,4 @@ export default function ModalDetalleEscaneo({
     </div>
   )
 }
+

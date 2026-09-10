@@ -4,8 +4,9 @@ import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { formatCurrency } from '@/lib/utils'
 import type { Producto } from '@/lib/types'
-import { X, Plus, Pencil, Trash2, PackagePlus, DollarSign, AlertTriangle } from 'lucide-react'
+import { X, Plus, Pencil, Trash2, PackagePlus, DollarSign, AlertTriangle, Barcode } from 'lucide-react'
 import toast from 'react-hot-toast'
+import Scanner from '@/components/Scanner'
 
 interface ModalGestionProps {
   producto: Producto
@@ -22,6 +23,8 @@ export default function ModalGestion({ producto, onClose, onActualizado }: Modal
   const [precioCosto, setPrecioCosto] = useState(String(producto.precio_costo))
   const [precioVenta, setPrecioVenta] = useState(String(producto.precio_venta))
   const [stockMinimo, setStockMinimo] = useState(String(producto.stock_minimo))
+  const [codigoBarras, setCodigoBarras] = useState(producto.codigo_barras || '')
+  const [showScanner, setShowScanner] = useState(false)
   const [guardando, setGuardando] = useState(false)
 
   async function agregarStock() {
@@ -55,18 +58,27 @@ export default function ModalGestion({ producto, onClose, onActualizado }: Modal
         precio_costo: parseFloat(precioCosto) || 0,
         precio_venta: parseFloat(precioVenta) || 0,
         stock_minimo: parseInt(stockMinimo) || 5,
+        codigo_barras: codigoBarras.trim() || null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', producto.id)
 
     if (error) {
-      toast.error('Error actualizando precios')
+      toast.error('Error actualizando producto')
     } else {
-      toast.success('Precios actualizados')
+      toast.success('Producto actualizado')
       onActualizado()
       onClose()
     }
     setGuardando(false)
+  }
+
+  function handleScan(scanned: string) {
+    setShowScanner(false)
+    if (scanned.trim()) {
+      setCodigoBarras(scanned.trim())
+      toast.success(`Código escaneado: ${scanned.trim()}`)
+    }
   }
 
   async function eliminarProducto() {
@@ -88,6 +100,13 @@ export default function ModalGestion({ producto, onClose, onActualizado }: Modal
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.75)' }}>
+      {showScanner && (
+        <Scanner
+          onScan={handleScan}
+          onClose={() => setShowScanner(false)}
+          titulo="Escanear código de barras"
+        />
+      )}
       <div className="w-full max-w-sm rounded-2xl overflow-hidden fade-in"
         style={{ background: 'var(--bg-surface)', border: '1px solid var(--bg-surface2)' }}>
 
@@ -177,12 +196,35 @@ export default function ModalGestion({ producto, onClose, onActualizado }: Modal
           </div>
         )}
 
-        {/* VISTA: editar precios */}
+        {/* VISTA: editar precios y datos */}
         {vista === 'precio' && (
           <div className="p-5 flex flex-col gap-4">
             <div className="flex items-center gap-2 mb-1">
               <Pencil size={16} style={{ color: 'var(--primary-light)' }} />
-              <span className="font-semibold text-sm" style={{ color: 'var(--text)' }}>Editar precios</span>
+              <span className="font-semibold text-sm" style={{ color: 'var(--text)' }}>Editar precios y código</span>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>Código de barras / QR</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={codigoBarras}
+                  onChange={e => setCodigoBarras(e.target.value)}
+                  placeholder="Sin código asignado..."
+                  style={{ flex: 1 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowScanner(true)}
+                  className="px-3 rounded-xl flex items-center justify-center gap-1 text-xs font-semibold"
+                  style={{ background: 'rgba(37,99,235,0.15)', color: 'var(--primary-light)', border: '1px solid rgba(37,99,235,0.3)' }}
+                  title="Escanear con cámara"
+                >
+                  <Barcode size={16} />
+                  <span>Escanear</span>
+                </button>
+              </div>
             </div>
 
             <div>
